@@ -1,0 +1,12 @@
+[package]
+name = "gentoo-build-server"
+version = "0.1.0"
+authors = ["otakuto <otakuto893@gmail.com>"]
+
+[dependencies]
+rustc-serialize = "0.3"
+iron = "0.4"
+valico = "1.0"
+hyper = "0.9"
+rustless = "0.10.0"
+rust-crypto = "^0.2"

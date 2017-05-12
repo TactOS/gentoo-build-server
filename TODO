@@ -1,0 +1,15 @@
+Use kubernetes.
+Use DB.
+Support systemd and other.
+Support multiple compiler.
+Support multiple CFLAGS and CXXFLAGS.
+Support optional ccache.
+Support multiple arch.
+Support multiple OS.
+Support multiple libc.
+emerge-request without local repo.
+Specify version of dependency package.
+Support file search.
+Improve cache.
+Web client.
+View build log in real time.
