@@ -38,6 +38,13 @@ fn is_atom(repository:&str, category:&str, package:&str, version:&str) -> bool
     return output.status.success() && output.stdout.ends_with(ex.as_bytes());
 }
 
+#[test]
+fn test_is_atom()
+{
+    assert_eq!(false, is_atom("test","test","test","test"));
+    assert_eq!(true, is_atom("gentoo","app-editors","vim","8.0.1298"));
+}
+
 fn main()
 {
     let api = Api::build(|api|
