@@ -32,8 +32,10 @@ use hyper::header::
 
 fn is_atom(repository:&str, category:&str, package:&str, version:&str) -> bool
 {
-    return Command::new("equery").arg("u")
-        .arg(format!("{}/{}-{}::{}", category, package, version, repository)).output().unwrap().status.success();
+    let output = Command::new("equery").arg("w")
+        .arg(format!("{}/{}-{}::{}", category, package, version, repository)).output().unwrap();
+    let ex = format!("{}/{}/{}/{}-{}.ebuild\n", repository, category, package, package, version);
+    return output.status.success() && output.stdout.ends_with(ex.as_bytes());
 }
 
 fn main()
