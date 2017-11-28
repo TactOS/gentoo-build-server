@@ -14,7 +14,7 @@ for atom in ${atoms[*]}; do
 	echo ${atom}
 	rest_url=$(qatom --format '%{CATEGORY}/%{PN}/%{PV}-%[PR]' ${atom} | sed -e 's/-$//')
 	uses_json=$(equery -q u ${atom} | sed -e 's/\([+-]\)\(.*\)/"\2":\1/' -e 's/-$/false/' -e 's/+$/true/' -e 's/.*/\0,/')
-	uses_json=${uses_json::-1}
+	uses_json=${uses_json%,}
 	download=$(curl -s -H "Accept: application/json" -H "Content-type: application/json" -X POST -d "{\"use\":{${uses_json}}}" ${GENTOO_BUILD_SERVER}/api/1/atoms/gentoo/${rest_url}/builds)
 	echo ${download}
 	downloads+=(${download})
