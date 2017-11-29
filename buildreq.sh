@@ -6,24 +6,60 @@ version=$4
 id=$5
 use=$6
 atom=${category}/${package}-${version}::${repository}
-atom_path=${repository}/${category}/${package}/${version}/${id}
+atom_path=${repository}/${category}/${package}/${version}
+id_path=${repository}/${category}/${package}/${version}/${id}
 
-mkdir -p ${atom_path}
-echo progress > ${atom_path}/status
-: > ${atom_path}/log
+function create_ccache_dir()
+{
+  #TODO copy from old ccache
+  mkdir -p ${1}/ccache
+}
+
+function ebuild_to_path()
+{
+  local v=$(qatom -F '%{PV}-%[PR]' $(echo ${1%.ebuild} | awk -F/ '{print $(NF)}') | sed -e 's/-$//')
+  echo $(echo ${1%.ebuild} | awk -F/ '{print $(NF-3)"/"$(NF-2)"/"$(NF-1)}')/${v}
+}
+
+create_ccache_dir ${atom_path}
+
+mkdir -p ${id_path}
+: > ${id_path}/log
+
 
 cname=${repository}_${category}_${package}_${version}_${id}
-cid=$(docker run --rm -v /usr/portage/distfiles:/usr/portage/distfiles -v /var/db/repos/gentoo:/var/db/repos/gentoo:ro -d -i -t --name ${cname} gentoo:gbs)
+cid=$(docker run --rm -v /usr/portage/distfiles:/usr/portage/distfiles -v /var/db/repos/gentoo:/var/db/repos/gentoo:ro -d -i -t --name ${cname}_0 gentoo:gbs)
 
-docker exec ${cid} sh -c "echo ${category}/${package}::${repository} ${use} > /etc/portage/package.use" | tee -a ${atom_path}/log
-docker exec ${cid} emerge -v --buildpkg --autounmask-write '='${atom} | tee -a ${atom_path}/log
-if [[ ${PIPESTATUS[0]} != 0 ]]; then
-	docker exec ${cid} sh -c 'yes | etc-update --automode -3' | tee -a ${atom_path}/log
-	docker exec ${cid} emerge -v --buildpkg --autounmask-write '='${atom} | tee -a ${atom_path}/log
-fi
-if docker cp ${cid}:/usr/portage/packages/${category}/${package}-${version}.tbz2 ${atom_path}; then
-	echo success > ${atom_path}/status
+echo waiting > ${id_path}/status
+
+echo compiling > ${id_path}/status
+docker exec ${cid} sh -c "echo ${category}/${package}::${repository} ${use} > /etc/portage/package.use" | tee -a ${id_path}/log
+docker exec ${cid} emerge &> /dev/null
+docker exec ${cid} eselect news read &> /dev/null
+ebuilds=(`docker exec ${cid} sh -c "emerge -pq --autounmask-write \=${atom} | sed -e 's/\[.*\]//g' | tr -d ' ' | xargs -I{} equery w {}"`)
+docker exec ${cid} sh -c 'yes | etc-update --automode -3' | tee -a ${id_path}/log
+for ebuild in ${ebuilds[*]}; do
+  create_ccache_dir $(ebuild_to_path ${ebuild})
+done
+docker kill ${cid}
+
+ccache_mount=
+for ebuild in ${ebuilds[*]}; do
+  ccache_mount+=" -v /home/user/work/git/gentoo-build-server/$(ebuild_to_path ${ebuild})/ccache:/mnt/ccache/$(ebuild_to_path ${ebuild})/ccache"
+done
+cid=$(docker run --rm -v /usr/portage/distfiles:/usr/portage/distfiles -v /var/db/repos/gentoo:/var/db/repos/gentoo:ro ${ccache_mount} -d -i -t --name ${cname}_1 gentoo:gbs)
+docker exec ${cid} sh -c "echo FEATURES=\'ccache\' >> /etc/portage/make.conf"
+docker exec ${cid} sh -c "echo CCACHE_SIZE=\'16G\' >> /etc/portage/make.conf"
+for ebuild in ${ebuilds[*]}; do
+  docker exec ${cid} rm -rf /var/tmp/ccache
+  docker exec ${cid} ln -s /mnt/ccache/$(ebuild_to_path ${ebuild})/ccache /var/tmp/
+  docker exec ${cid} chown portage:portage /var/tmp/ccache
+  docker exec ${cid} ebuild ${ebuild} package
+done
+
+if docker cp ${cid}:/usr/portage/packages/${category}/${package}-${version}.tbz2 ${id_path}; then
+	echo success > ${id_path}/status
 else
-	echo failed > ${atom_path}/status
+	echo failed > ${id_path}/status
 fi
 docker kill ${cid}
