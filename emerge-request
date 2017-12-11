@@ -30,17 +30,20 @@ for (( i = 0; i < ${#downloads[*]}; ++i )); do
 	while true; do
 		case $(curl -s ${GENTOO_BUILD_SERVER}/api/1/atoms/${downloads[i]}/status) in
 			'success')
+				echo "Success! ($(( ${i} + 1 )) of ${#downloads[*]})"
 			break;;
 			'failed')
+				echo "Failed! ($(( ${i} + 1 )) of ${#downloads[*]})"
 			break;;
 			*)
 			sleep 10
 			echo -n '.';;
 		esac
 	done
+
 	mkdir -p ${PKGDIR}/${category}
 	if curl -s -o ${PKGDIR}/${category}/${package}-${version}.tbz2 ${GENTOO_BUILD_SERVER}/api/1/atoms/${downloads[i]}; then
-		echo OK!
+		echo Success!
 	else
 		echo Failed!
 	fi
