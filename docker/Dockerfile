@@ -10,8 +10,6 @@ COPY parent /etc/portage/make.profile
 RUN mkdir -p /etc/portage/repos.conf
 COPY gentoo.conf /etc/portage/repos.conf
 
-RUN mkdir -p /var/db/repos/gentoo
-
 RUN mkdir -p /usr/portage
 
 COPY make.conf /etc/portage
