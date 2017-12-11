@@ -118,6 +118,38 @@ fn main()
                     return client.empty();
                 })
             });
+            atoms_ns.get("builds/:id/log", |endpoint|
+            {
+                endpoint.params(|params|
+                {
+                    params.req_typed("id", json_dsl::string());
+                });
+                endpoint.handle(|mut client, params|
+                {
+                    let repository = params.find("repositories").unwrap().to_string().trim_matches('"').to_string();
+                    let category = params.find("categories").unwrap().to_string().trim_matches('"').to_string();
+                    let package = params.find("packages").unwrap().to_string().trim_matches('"').to_string();
+                    let version = params.find("versions").unwrap().to_string().trim_matches('"').to_string();
+                    // TODO check [0-0a-f]
+                    let id = params.find("id").unwrap().to_string().trim_matches('"').to_string();
+
+                    if is_atom(&repository, &category, &package, &version)
+                    {
+                        let s = format!("{}/{}/{}/{}/{}/log", repository, category, package, version, id);
+                        let path = Path::new(&s);
+                        if path.is_file()
+                        {
+                            let f = File::open(&s).unwrap();
+                            let mut reader = BufReader::new(f);
+                            let mut buf = String::new();
+                            reader.read_to_string(&mut buf);
+                            return client.text(buf);
+                        }
+                    }
+                    client.set_status(StatusCode::NotFound);
+                    return client.empty();
+                })
+            });
             atoms_ns.get("builds/:id", |endpoint|
             {
                 endpoint.params(|params|
