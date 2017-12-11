@@ -1,3 +1,4 @@
+#!/bin/bash
 GBS_DIR=/home/user/work/git/gentoo-build-server/gbs
 mkdir -p ${GBS_DIR}/repos
 mkdir -p ${GBS_DIR}/distfiles
