@@ -31,7 +31,7 @@ mkdir -p ${id_path}
 cname=${repository}_${category}_${package}_${version}_${id}
 
 echo compiling > ${id_path}/status
-cid=$(docker run --rm -v ${GBS_DIR}/distfiles:/usr/portage/distfiles -v ${GBS_DIR}/repos:/var/db/repos:ro -v ${GBS_DIR}/ccache:/mnt/ccache -idt --name ${cname} gentoo:gbs)
+cid=$(docker run --rm -v ${GBS_DIR}/distfiles:/usr/portage/distfiles -v ${GBS_DIR}/repos:/var/db/repos:ro -v ${GBS_DIR}/ccache:/mnt/ccache --cap-add=SYS_PTRACE -idt --name ${cname} gentoo:gbs)
 docker exec ${cid} sh -c "echo FEATURES=\'ccache\' >> /etc/portage/make.conf"
 docker exec ${cid} sh -c "echo CCACHE_SIZE=\'16G\' >> /etc/portage/make.conf"
 
