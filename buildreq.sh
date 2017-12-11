@@ -38,13 +38,12 @@ cid=$(docker run --rm -v /usr/portage/distfiles:/usr/portage/distfiles -v /var/d
 
 echo waiting > ${id_path}/status
 
-echo compiling > ${id_path}/status
-docker exec ${cid} sh -c "echo ${category}/${package}::${repository} ${use} > /etc/portage/package.use" | tee -a ${id_path}/log
+docker exec ${cid} sh -c "echo ${category}/${package}::${repository} ${use} > /etc/portage/package.use"
 docker exec ${cid} emerge &> /dev/null
 docker exec ${cid} eselect news read &> /dev/null
 if ! docker exec ${cid} emerge -qp --autounmask-write \=${atom}; then
-  docker exec ${cid} emerge -q --autounmask-write \=${atom} | tee -a ${id_path}/log
-  docker exec ${cid} sh -c 'yes | etc-update --automode -3' | tee -a ${id_path}/log
+  docker exec ${cid} emerge -q --autounmask-write \=${atom}
+  docker exec ${cid} sh -c 'yes | etc-update --automode -3'
 fi
 ebuilds=(`docker exec ${cid} sh -c "emerge -pq \=${atom} | sed -e 's/\[.*\]//g' | tr -d ' ' | xargs -I{} equery w {}"`)
 for ebuild in ${ebuilds[*]}; do
@@ -52,6 +51,7 @@ for ebuild in ${ebuilds[*]}; do
 done
 docker kill ${cid}
 
+echo compiling > ${id_path}/status
 ccache_mount=
 for ebuild in ${ebuilds[*]}; do
   ccache_mount+=" -v /home/user/work/git/gentoo-build-server/gbs/ccache/$(ebuild_to_path ${ebuild})/ccache:/mnt/ccache/$(ebuild_to_path ${ebuild})/ccache"
@@ -60,7 +60,7 @@ cid=$(docker run --rm -v /usr/portage/distfiles:/usr/portage/distfiles -v /var/d
 docker exec ${cid} sh -c "echo FEATURES=\'ccache\' >> /etc/portage/make.conf"
 docker exec ${cid} sh -c "echo CCACHE_SIZE=\'16G\' >> /etc/portage/make.conf"
 
-docker exec ${cid} sh -c "echo ${category}/${package}::${repository} ${use} > /etc/portage/package.use" | tee -a ${id_path}/log
+docker exec ${cid} sh -c "echo ${category}/${package}::${repository} ${use} > /etc/portage/package.use"
 docker exec ${cid} emerge &> /dev/null
 docker exec ${cid} eselect news read &> /dev/null
 if ! docker exec ${cid} emerge -qp --autounmask-write \=${atom}; then
@@ -72,7 +72,8 @@ for ebuild in ${ebuilds[*]}; do
   docker exec ${cid} rm -rf /var/tmp/ccache
   docker exec ${cid} ln -s /mnt/ccache/$(ebuild_to_path ${ebuild})/ccache /var/tmp/
   docker exec ${cid} chown portage:portage /var/tmp/ccache
-  docker exec ${cid} ebuild ${ebuild} merge | tee -a ${id_path}/log
+  echo "ebuild ${ebuild} merge" >> ${id_path}/log
+  docker exec ${cid} env MAKEOPTS="-j1" ebuild ${ebuild} merge | tee -a ${id_path}/log
   docker exec ${cid} quickpkg \=$(ebuild_to_atom ${ebuild}) | tee -a ${id_path}/log
 done
 
