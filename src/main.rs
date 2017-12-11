@@ -4,12 +4,30 @@ extern crate iron;
 extern crate valico;
 extern crate crypto;
 
+#[macro_use(bson, doc)]
+extern crate bson;
+extern crate mongodb;
+
+use mongodb::{Client, ThreadedClient};
+use mongodb::db::ThreadedDatabase;
+use bson::
+{
+    Bson,
+    Document
+};
+
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
 use std::path::Path;
 use std::process::Command;
 use std::thread;
+use std::time::
+{
+    Duration,
+    SystemTime,
+    UNIX_EPOCH
+};
 use crypto::digest::Digest;
 use crypto::sha3::Sha3;
 use valico::json_dsl;
@@ -47,6 +65,10 @@ fn test_is_atom()
 
 fn main()
 {
+    let client = Client::connect("localhost", 27017)
+        .expect("Failed to initialize standalone client.");
+    let coll = client.db("gbs").collection("builds");
+
     let api = Api::build(|api|
     {
         api.prefix("api");
@@ -134,7 +156,7 @@ fn main()
             });
             atoms_ns.post("builds", |endpoint|
             {
-                endpoint.handle(|mut client, params|
+                endpoint.handle(move |mut client, params|
                 {
                     let repository = params.find("repositories").unwrap().to_string().trim_matches('"').to_string();
                     let category = params.find("categories").unwrap().to_string().trim_matches('"').to_string();
@@ -160,7 +182,26 @@ fn main()
                     {
                         if !Path::new(&format!("{}/{}/{}/{}/{}/{2}-{3}.tbz2", repository, category, package, version, id)).exists()
                         {
-                            thread::spawn(move ||
+                            {
+                                let mut uses = Document::new();
+                                for (key, value) in use_flag.as_object().unwrap().iter()
+                                {
+                                    uses.insert(key.clone(), Bson::Boolean(value.as_bool().unwrap().clone()));
+                                }
+                                let s = SystemTime::now();
+                                let doc = doc!
+                                {
+                                    "date" => &format!("{}", s.duration_since(UNIX_EPOCH).unwrap().as_secs()),
+                                    "id" => id.clone(),
+                                    "repository" => repository.clone(),
+                                    "category" => category.clone(),
+                                    "package" => package.clone(),
+                                    "version" => version.clone(),
+                                    "use" => uses
+                                };
+                                coll.insert_one(doc.clone(), None).ok().expect("Failed to insert document.");
+                            }
+                            thread::spawn(||
                             {
                                 let b = Command::new("./buildreq.sh")
                                 .arg(repository)
