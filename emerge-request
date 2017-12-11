@@ -16,7 +16,7 @@ for atom in ${atoms[*]}; do
 	uses_json=$(equery -q u ${atom} | sed -e 's/\([+-]\)\(.*\)/"\2":\1/' -e 's/-$/false/' -e 's/+$/true/' -e 's/.*/\0,/')
 	uses_json=${uses_json%,}
 	download=$(curl -s -H "Accept: application/json" -H "Content-type: application/json" -X POST -d "{\"use\":{${uses_json}}}" ${GENTOO_BUILD_SERVER}/api/1/atoms/gentoo/${rest_url}/builds)
-	echo ${download}
+	echo http://${GENTOO_BUILD_SERVER}/api/1/atoms/${download}
 	downloads+=(${download})
 done
 
@@ -25,15 +25,22 @@ for (( i = 0; i < ${#downloads[*]}; ++i )); do
 	package=$(qatom --format '%{PN}' ${atoms[i]})
 	version=$(qatom -F '%{PV}-%[PR]' ${atoms[i]} | sed -e 's/-$//')
 
-	echo Wait for ${category}/${package}-${version}.tbz2
+	echo "Wait for ${category}/${package}-${version}.tbz2"
 
-	while [[ $(curl -s ${GENTOO_BUILD_SERVER}/api/1/atoms/${downloads[i]}/status) != "success" ]]; do
-		sleep 10
-		echo -n '.'
+	while true; do
+		case $(curl -s ${GENTOO_BUILD_SERVER}/api/1/atoms/${downloads[i]}/status) in
+			'success')
+			break;;
+			'failed')
+			break;;
+			*)
+			sleep 10
+			echo -n '.';;
+		esac
 	done
 	mkdir -p ${PKGDIR}/${category}
 	if curl -s -o ${PKGDIR}/${category}/${package}-${version}.tbz2 ${GENTOO_BUILD_SERVER}/api/1/atoms/${downloads[i]}; then
-		echo OK.
+		echo OK!
 	else
 		echo Failed!
 	fi
