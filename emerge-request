@@ -11,12 +11,12 @@ atoms=(`emerge -pq ${ATOM} | sed -e 's/\[.*\]//g' | tr -d ' '`)
 downloads=()
 
 for atom in ${atoms[*]}; do
-	echo ${atom}
+	echo -e "\n${atom}"
 	rest_url=$(qatom --format '%{CATEGORY}/%{PN}/%{PV}-%[PR]' ${atom} | sed -e 's/-$//')
 	uses_json=$(equery -q u ${atom} | sed -e 's/\([+-]\)\(.*\)/"\2":\1/' -e 's/-$/false/' -e 's/+$/true/' -e 's/.*/\0,/')
 	uses_json=${uses_json%,}
 	download=$(curl -s -H "Accept: application/json" -H "Content-type: application/json" -X POST -d "{\"use\":{${uses_json}}}" ${GENTOO_BUILD_SERVER}/api/1/atoms/gentoo/${rest_url}/builds)
-	echo http://${GENTOO_BUILD_SERVER}/api/1/atoms/${download}
+	echo "http://${GENTOO_BUILD_SERVER}/api/1/atoms/${download}"
 	downloads+=(${download})
 done
 
@@ -25,15 +25,15 @@ for (( i = 0; i < ${#downloads[*]}; ++i )); do
 	package=$(qatom --format '%{PN}' ${atoms[i]})
 	version=$(qatom -F '%{PV}-%[PR]' ${atoms[i]} | sed -e 's/-$//')
 
-	echo "Wait for ${category}/${package}-${version}.tbz2"
+	echo -e "\nWait for ${category}/${package}-${version}.tbz2"
 
 	while true; do
 		case $(curl -s ${GENTOO_BUILD_SERVER}/api/1/atoms/${downloads[i]}/status) in
 			'success')
-				echo "Success! ($(( ${i} + 1 )) of ${#downloads[*]})"
+				echo -e "\nSuccess! ($(( ${i} + 1 )) of ${#downloads[*]})"
 			break;;
 			'failed')
-				echo "Failed! ($(( ${i} + 1 )) of ${#downloads[*]})"
+				echo -e "\nFailed! ($(( ${i} + 1 )) of ${#downloads[*]})"
 			break;;
 			*)
 			sleep 10
@@ -43,9 +43,9 @@ for (( i = 0; i < ${#downloads[*]}; ++i )); do
 
 	mkdir -p ${PKGDIR}/${category}
 	if curl -s -o ${PKGDIR}/${category}/${package}-${version}.tbz2 ${GENTOO_BUILD_SERVER}/api/1/atoms/${downloads[i]}; then
-		echo Success!
+		echo "Success!"
 	else
-		echo Failed!
+		echo "Failed!"
 	fi
 done
 

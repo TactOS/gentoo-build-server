@@ -54,8 +54,9 @@ for ebuild in ${ebuilds[*]}; do
     docker exec ${cid} install -o root -g portage -m 2775 -d /mnt/ccache/$(ebuild_to_path ${ebuild})/ccache
   fi
   docker exec ${cid} ln -s /mnt/ccache/$(ebuild_to_path ${ebuild})/ccache /var/tmp/ccache
-  echo "ebuild ${ebuild} merge" >> ${id_path}/log
+  echo "\$ ebuild ${ebuild} merge" >> ${id_path}/log
   docker exec ${cid} env MAKEOPTS=${MAKEOPTS} ebuild ${ebuild} merge | tee -a ${id_path}/log
+  echo "\$ quickpkg \=$(ebuild_to_atom ${ebuild})" >> ${id_path}/log
   docker exec ${cid} quickpkg \=$(ebuild_to_atom ${ebuild}) | tee -a ${id_path}/log
 done
 
