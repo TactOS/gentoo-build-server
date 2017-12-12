@@ -92,6 +92,10 @@ fn main()
             });
             atoms_ns.get("builds/:id/status", |endpoint|
             {
+                endpoint.params(|params|
+                {
+                    params.req_typed("id", json_dsl::string());
+                });
                 endpoint.handle(|mut client, params|
                 {
                     let repository = params.find("repositories").unwrap().to_string().trim_matches('"').to_string();
