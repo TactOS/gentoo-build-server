@@ -49,4 +49,4 @@ for (( i = 0; i < ${#downloads[*]}; ++i )); do
 	fi
 done
 
-emerge -av --usepkg ${ATOM}
+emerge -avk ${ATOM}
