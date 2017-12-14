@@ -39,7 +39,7 @@ ebuilds=(`emerge -pq \=${atom} | sed -e 's/\[.*\]//g' | tr -d ' ' | xargs -I{} e
 for ebuild in ${ebuilds[*]}; do
   rm -rf /var/tmp/ccache
   if [ -d /mnt/ccache/$(ebuild_to_path ${ebuild})/ccache ]; then
-    MAKEOPTS='-j1'
+    MAKEOPTS='-j8'
   else
     MAKEOPTS='-j8'
     mkdir -p /mnt/ccache/$(ebuild_to_path ${ebuild})
