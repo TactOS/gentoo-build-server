@@ -34,7 +34,7 @@ cid=$(docker run --rm -v ${GBS_DIR}/distfiles:/usr/portage/distfiles -v ${GBS_DI
 docker exec ${cid} sh -c "echo FEATURES=\'ccache\' >> /etc/portage/make.conf"
 docker exec ${cid} sh -c "echo CCACHE_SIZE=\'16G\' >> /etc/portage/make.conf"
 
-docker exec ${cid} sh -c "echo ${category}/${package}::${repository} ${use} > /etc/portage/package.use"
+docker exec ${cid} sh -c "echo \=${category}/${package}::${repository} ${use} > /etc/portage/package.use"
 docker exec ${cid} emerge &> /dev/null
 docker exec ${cid} eselect news read &> /dev/null
 if ! docker exec ${cid} emerge -qp --autounmask-write \=${atom}; then
