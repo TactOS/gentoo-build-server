@@ -16,6 +16,7 @@ use bson::
     Document
 };
 
+use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
@@ -280,14 +281,30 @@ fn main()
                                 };
                                 coll.insert_one(doc.clone(), None).ok().expect("Failed to insert document.");
                             }
-                            thread::spawn(||
+                            thread::spawn(move ||
                             {
-                                let b = Command::new("./buildreq.sh")
+                                fs::create_dir_all(format!("{}/packages/{}/{}/{}/{}/{}", GBS_DIR, repository, category, package, version, id)).unwrap();
+                                let b = Command::new("docker")
+                                .arg("run")
+                                .arg("--rm")
+                                .arg("-v")
+                                .arg(format!("{}/distfiles:/usr/portage/distfiles", GBS_DIR))
+                                .arg("-v")
+                                .arg(format!("{}/repos:/var/db/repos:ro", GBS_DIR))
+                                .arg("-v")
+                                .arg(format!("{}/ccache:/mnt/ccache", GBS_DIR))
+                                .arg("-v")
+                                .arg(format!("{}/packages/{}/{}/{}/{}/{}:/mnt/package", GBS_DIR, repository, category, package, version, id))
+                                .arg("--cap-add=SYS_PTRACE")
+                                .arg("-idt")
+                                .arg("--name")
+                                .arg(format!("{}_{}_{}_{}_{}", repository, category, package, version, id))
+                                .arg("gentoo:gbs")
+                                .arg("/usr/bin/build_script.sh")
                                 .arg(repository)
                                 .arg(category)
                                 .arg(package)
                                 .arg(version)
-                                .arg(id)
                                 .arg(uses)
                                 .output().unwrap();
                                 println!("{}\n", String::from_utf8_lossy(&b.stdout));

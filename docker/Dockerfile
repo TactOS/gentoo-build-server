@@ -13,3 +13,5 @@ COPY gentoo.conf /etc/portage/repos.conf
 RUN mkdir -p /usr/portage
 
 COPY make.conf /etc/portage
+
+COPY build_script.sh /usr/bin
