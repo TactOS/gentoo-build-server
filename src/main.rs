@@ -24,7 +24,6 @@ use std::process::Command;
 use std::thread;
 use std::time::
 {
-    Duration,
     SystemTime,
     UNIX_EPOCH
 };
@@ -48,19 +47,66 @@ use hyper::header::
     Charset
 };
 
-fn is_atom(repository:&str, category:&str, package:&str, version:&str) -> bool
+const GBS_DIR:&str = "/var/lib/gbs";
+
+fn check(path:&str) -> Option<&str>
 {
-    let output = Command::new("equery").arg("w")
-        .arg(format!("{}/{}-{}::{}", category, package, version, repository)).output().unwrap();
-    let ex = format!("{}/{}/{}/{}-{}.ebuild\n", repository, category, package, package, version);
-    return output.status.success() && output.stdout.ends_with(ex.as_bytes());
+    let p = Path::new(path).file_name()?.to_str()?;
+    if p == path
+    {
+        return Some(path);
+    }
+    else
+    {
+        return None;
+    }
+}
+
+fn is_atom(repository:&str, category:&str, package:&str, version:&str) -> Option<()>
+{
+
+    let r = check(repository)?;
+    let c = check(category)?;
+    let p = check(package)?;
+    let v = check(version)?;
+
+    if Path::new(&format!("{}/repos/{}/{}/{}/{}-{}.ebuild", GBS_DIR, r, c, p, p, v)).is_file()
+    {
+        return Some(());
+    }
+    else
+    {
+        return None;
+    }
+}
+
+fn is_build_request(repository:&str, category:&str, package:&str, version:&str, id:&str) -> Option<()>
+{
+
+    let r = check(repository)?;
+    let c = check(category)?;
+    let p = check(package)?;
+    let v = check(version)?;
+    let i = check(id)?;
+
+    if Path::new(&format!("{}/packages/{}/{}/{}/{}/{}", GBS_DIR, r, c, p, v, i)).is_dir()
+    {
+        return Some(());
+    }
+    else
+    {
+        return None;
+    }
 }
 
 #[test]
 fn test_is_atom()
 {
-    assert_eq!(false, is_atom("test","test","test","test"));
-    assert_eq!(true, is_atom("gentoo","app-editors","vim","8.0.1298"));
+    assert_eq!(false, is_atom("test","test","test","test").is_some());
+    assert_eq!(false, is_atom("test/.","test/../.","test","test").is_some());
+    assert_eq!(false, is_atom("gentoo/.","app-editors","vim","8.0.1298").is_some());
+    assert_eq!(false, is_atom("gentoo","app-editors","vim","8").is_some());
+    assert_eq!(true, is_atom("gentoo","app-editors","vim","8.0.1298").is_some());
 }
 
 fn main()
@@ -102,12 +148,11 @@ fn main()
                     let category = params.find("categories").unwrap().to_string().trim_matches('"').to_string();
                     let package = params.find("packages").unwrap().to_string().trim_matches('"').to_string();
                     let version = params.find("versions").unwrap().to_string().trim_matches('"').to_string();
-                    // TODO check [0-0a-f]
                     let id = params.find("id").unwrap().to_string().trim_matches('"').to_string();
 
-                    if is_atom(&repository, &category, &package, &version)
+                    if is_build_request(&repository, &category, &package, &version, &id).is_some()
                     {
-                        let s = format!("{}/{}/{}/{}/{}/status", repository, category, package, version, id);
+                        let s = format!("{}/packages/{}/{}/{}/{}/{}/status", GBS_DIR, repository, category, package, version, id);
                         let path = Path::new(&s);
                         if path.is_file()
                         {
@@ -134,12 +179,11 @@ fn main()
                     let category = params.find("categories").unwrap().to_string().trim_matches('"').to_string();
                     let package = params.find("packages").unwrap().to_string().trim_matches('"').to_string();
                     let version = params.find("versions").unwrap().to_string().trim_matches('"').to_string();
-                    // TODO check [0-0a-f]
                     let id = params.find("id").unwrap().to_string().trim_matches('"').to_string();
 
-                    if is_atom(&repository, &category, &package, &version)
+                    if is_build_request(&repository, &category, &package, &version, &id).is_some()
                     {
-                        let s = format!("{}/{}/{}/{}/{}/log", repository, category, package, version, id);
+                        let s = format!("{}/packages/{}/{}/{}/{}/{}/log", GBS_DIR, repository, category, package, version, id);
                         let path = Path::new(&s);
                         if path.is_file()
                         {
@@ -166,12 +210,11 @@ fn main()
                     let category = params.find("categories").unwrap().to_string().trim_matches('"').to_string();
                     let package = params.find("packages").unwrap().to_string().trim_matches('"').to_string();
                     let version = params.find("versions").unwrap().to_string().trim_matches('"').to_string();
-                    // TODO check [0-0a-f]
                     let id = params.find("id").unwrap().to_string().trim_matches('"').to_string();
 
-                    if is_atom(&repository, &category, &package, &version)
+                    if is_build_request(&repository, &category, &package, &version, &id).is_some()
                     {
-                        let s = format!("{}/{}/{}/{}/{}/{2}-{3}.tbz2", repository, category, package, version, id);
+                        let s = format!("{}/packages/{}/{}/{}/{}/{}/{3}-{4}.tbz2", GBS_DIR, repository, category, package, version, id);
                         let path = Path::new(&s);
                         if path.is_file()
                         {
@@ -214,9 +257,9 @@ fn main()
 
                     let url = format!("{}/{}/{}/{}/builds/{}", repository, category, package, version, id);
 
-                    if is_atom(&repository, &category, &package, &version)
+                    if is_atom(&repository, &category, &package, &version).is_some()
                     {
-                        if !Path::new(&format!("{}/{}/{}/{}/{}/{2}-{3}.tbz2", repository, category, package, version, id)).exists()
+                        if !is_build_request(&repository, &category, &package, &version, &id).is_some()
                         {
                             {
                                 let mut uses = Document::new();

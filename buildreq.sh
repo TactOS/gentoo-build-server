@@ -1,5 +1,5 @@
 #!/bin/bash
-GBS_DIR=/home/user/work/git/gentoo-build-server/gbs
+GBS_DIR=/var/lib/gbs
 
 repository=$1
 category=$2
@@ -9,8 +9,7 @@ id=$5
 use=$6
 atom=${category}/${package}-${version}::${repository}
 atom_path=${repository}/${category}/${package}/${version}
-#id_path=${GBS_DIR}/packages/${repository}/${category}/${package}/${version}/${id}
-id_path=${repository}/${category}/${package}/${version}/${id}
+id_path=${GBS_DIR}/packages/${repository}/${category}/${package}/${version}/${id}
 
 
 function ebuild_to_path()

@@ -1,5 +1,5 @@
 #!/bin/bash
-GBS_DIR=/home/user/work/git/gentoo-build-server/gbs
+GBS_DIR=/var/lib/gbs
 mkdir -p ${GBS_DIR}/ccache
 mkdir -p ${GBS_DIR}/distfiles
 mkdir -p ${GBS_DIR}/packages
