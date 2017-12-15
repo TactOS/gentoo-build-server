@@ -12,3 +12,4 @@ docker exec ${cid} emerge dev-util/ccache
 docker exec ${cid} emerge app-portage/gentoolkit
 docker exec ${cid} emerge net-misc/curl
 docker commit ${cid} gentoo:gbs
+docker kill ${cid}
