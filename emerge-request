@@ -26,6 +26,7 @@ for (( i = 0; i < ${#downloads[*]}; ++i )); do
 	version=$(qatom -F '%{PV}-%[PR]' ${atoms[i]} | sed -e 's/-$//')
 
 	echo -e "\nWait for ${category}/${package}-${version}.tbz2"
+  echo "http://${GENTOO_BUILD_SERVER}/api/1/atoms/${downloads[i]}"
 
 	while true; do
 		case $(curl -s ${GENTOO_BUILD_SERVER}/api/1/atoms/${downloads[i]}/status) in
