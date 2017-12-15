@@ -22,6 +22,35 @@ function ebuild_to_atom()
   echo $(echo ${1%.ebuild} | awk -F/ '{print $(NF-2)"/"$(NF-1)}')-${v}
 }
 
+function try_download()
+{
+  local atom=${1}
+  echo ${atom}
+  local rest_url=$(qatom --format '%{CATEGORY}/%{PN}/%{PV}-%[PR]' ${atom} | sed -e 's/-$//')
+  local uses_json=$(equery -q u ${atom} | sed -e 's/\([+-]\)\(.*\)/"\2":\1/' -e 's/-$/false/' -e 's/+$/true/' -e 's/.*/\0,/')
+  local uses_json=${uses_json%,}
+  local download=$(curl -f -s -H "Accept: application/json" -H "Content-type: application/json" -X GET -d "{\"use\":{${uses_json}}}" ${GENTOO_BUILD_SERVER}/api/1/atoms/gentoo/${rest_url}/builds)
+  echo ${download}
+  if [ ${?} != "0" ]; then
+      return 1
+  fi
+  local category=$(qatom --format '%{CATEGORY}' ${atom})
+  local package=$(qatom --format '%{PN}' ${atom})
+  local version=$(qatom -F '%{PV}-%[PR]' ${atom} | sed -e 's/-$//')
+  case $(curl -s ${GENTOO_BUILD_SERVER}/api/1/atoms/${download}/status) in
+    'success')
+      mkdir -p /usr/portage/packages/${category}
+      if curl -f -s -o /usr/portage/packages/${category}/${package}-${version}.tbz2 ${GENTOO_BUILD_SERVER}/api/1/atoms/${download}; then
+        return 0
+      else
+        return 1
+      fi;;
+    *)
+      return 1;;
+  esac
+  return 1
+}
+
 : > /mnt/package/log
 
 echo compiling > /mnt/package/status
@@ -38,6 +67,14 @@ fi
 ebuilds=(`emerge -pq \=${atom} | sed -e 's/\[[^]]*\]\([^ ]*\)/\1/g' | tr -d ' ' | xargs -I{} equery w {}`)
 
 for ebuild in ${ebuilds[*]}; do
+  echo "Try downloading $(ebuild_to_atom ${ebuild})" | tee -a /mnt/package/log
+  if try_download $(ebuild_to_atom ${ebuild}); then
+      if emerge -K \=$(ebuild_to_atom ${ebuild}); then
+        echo "Available cache $(ebuild_to_atom ${ebuild})" | tee -a /mnt/package/log
+        continue
+      fi
+  fi
+  echo "N/A cache $(ebuild_to_atom ${ebuild})" | tee -a /mnt/package/log
   rm -rf /var/tmp/ccache
   if [ -d /mnt/ccache/$(ebuild_to_path ${ebuild})/ccache ]; then
     MAKEOPTS='-j8'
