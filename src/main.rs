@@ -32,7 +32,6 @@ use crypto::digest::Digest;
 use crypto::sha3::Sha3;
 use valico::json_dsl;
 use rustless::server::status::StatusCode;
-use rustless::json::ToJson;
 use rustless::
 {
     Application,
