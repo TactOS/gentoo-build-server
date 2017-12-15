@@ -141,13 +141,6 @@ fn main()
                 params.req_typed("packages", json_dsl::string());
                 params.req_typed("versions", json_dsl::string());
             });
-            atoms_ns.get("builds", |endpoint|
-            {
-                endpoint.handle(|client, params|
-                {
-                    return client.json(&params.to_json());
-                })
-            });
             atoms_ns.get("builds/:id/status", |endpoint|
             {
                 endpoint.params(|params|
@@ -243,6 +236,36 @@ fn main()
                     }
                     client.set_status(StatusCode::NotFound);
                     return client.empty();
+                })
+            });
+            atoms_ns.get("builds", |endpoint|
+            {
+                endpoint.handle(|mut client, params|
+                {
+                    let repository = params.find("repositories").unwrap().to_string().trim_matches('"').to_string();
+                    let category = params.find("categories").unwrap().to_string().trim_matches('"').to_string();
+                    let package = params.find("packages").unwrap().to_string().trim_matches('"').to_string();
+                    let version = params.find("versions").unwrap().to_string().trim_matches('"').to_string();
+                    let use_flag = params.find("use").unwrap();
+
+                    let mut uu :Vec<(String, bool)> = Vec::new();
+                    for (key, value) in use_flag.as_object().unwrap().iter()
+                    {
+                        uu.push((key.clone(), value.as_bool().unwrap()));
+                    }
+
+                    let id = build_id(&repository, &category, &package, &version, &uu);
+
+                    if is_build_request(&repository, &category, &package, &version, &id).is_some()
+                    {
+                        let url = format!("{}/{}/{}/{}/builds/{}", repository, category, package, version, id);
+                        return client.text(url);
+                    }
+                    else
+                    {
+                        client.set_status(StatusCode::NotFound);
+                        return client.empty();
+                    }
                 })
             });
             atoms_ns.post("builds", |endpoint|
