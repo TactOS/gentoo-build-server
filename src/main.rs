@@ -254,9 +254,9 @@ fn main()
                     let category = params.find("categories").unwrap().to_string().trim_matches('"').to_string();
                     let package = params.find("packages").unwrap().to_string().trim_matches('"').to_string();
                     let version = params.find("versions").unwrap().to_string().trim_matches('"').to_string();
+                    let use_flag = params.find("use").unwrap();
 
                     let mut uses = String::new();
-                    let use_flag = params.find("use").unwrap();
                     for (key, value) in use_flag.as_object().unwrap().iter()
                     {
                         uses.push_str(&format!("{}{} ", match value.as_bool().unwrap(){true => "", false => "-"}, key));
