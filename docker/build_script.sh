@@ -1,10 +1,10 @@
 #!/bin/bash
 
-repository=$1
-category=$2
-package=$3
-version=$4
-use=$5
+repository=${1}
+category=${2}
+package=${3}
+version=${4}
+use=${5}
 
 atom=${category}/${package}-${version}::${repository}
 

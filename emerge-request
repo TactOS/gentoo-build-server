@@ -1,8 +1,8 @@
 #!/bin/bash
 
-GENTOO_BUILD_SERVER=$1
-ATOM=$2
 PKGDIR='/usr/portage/packages'
+GENTOO_BUILD_SERVER=${1}
+ATOM=${2}
 
 emerge -pv ${ATOM} || exit
 
