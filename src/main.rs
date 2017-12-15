@@ -100,6 +100,18 @@ fn is_build_request(repository:&str, category:&str, package:&str, version:&str, 
     }
 }
 
+fn build_id(repository:&str, category:&str, package:&str, version:&str, uses:&[(String, bool)]) -> String
+{
+    let mut hasher = Sha3::sha3_256();
+    hasher.input_str(&format!("{}{}{}{}", repository, category, package, version));
+
+    for &(ref key, ref value) in uses.iter()
+    {
+        hasher.input_str(&format!("{}{} ", match *value {true => "", false => "-"}, key));
+    }
+    return hasher.result_str();
+}
+
 #[test]
 fn test_is_atom()
 {
@@ -249,12 +261,14 @@ fn main()
                     {
                         uses.push_str(&format!("{}{} ", match value.as_bool().unwrap(){true => "", false => "-"}, key));
                     }
-                    println!("{}", params);
-                    println!("{}", uses);
-
-                    let mut hasher = Sha3::sha3_256();
-                    hasher.input_str(&format!("{}{}{}{}{}", repository, category, package, version, uses));
-                    let id = hasher.result_str();
+                    let mut uu :Vec<(String, bool)> = Vec::new();
+                    for (key, value) in use_flag.as_object().unwrap().iter()
+                    {
+                        uu.push((key.clone(), value.as_bool().unwrap()));
+                    }
+                    let id = build_id(&repository, &category, &package, &version, &uu);
+                    println!("{}/{}/{}/{}", repository, category, package, version);
+                    println!("USE=\"{}\"", uses);
 
                     let url = format!("{}/{}/{}/{}/builds/{}", repository, category, package, version, id);
 
