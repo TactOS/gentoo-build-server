@@ -34,7 +34,7 @@ if ! emerge -qp --autounmask-write \=${atom}; then
   emerge -q --autounmask-write \=${atom} | tee -a /mnt/package/log
   yes | etc-update --automode -3 | tee -a /mnt/package/log
 fi
-ebuilds=(`emerge -pq \=${atom} | sed -e 's/\[.*\]//g' | tr -d ' ' | xargs -I{} equery w {}`)
+ebuilds=(`emerge -pq \=${atom} | sed -e 's/\[[^]]*\]\([^ ]*\)/\1/g' | tr -d ' ' | xargs -I{} equery w {}`)
 
 for ebuild in ${ebuilds[*]}; do
   rm -rf /var/tmp/ccache
