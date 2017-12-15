@@ -248,6 +248,12 @@ fn main()
                     let version = params.find("versions").unwrap().to_string().trim_matches('"').to_string();
                     let use_flag = params.find("use").unwrap();
 
+                    let mut uses = String::new();
+                    for (key, value) in use_flag.as_object().unwrap().iter()
+                    {
+                        uses.push_str(&format!("{}{} ", match value.as_bool().unwrap(){true => "", false => "-"}, key));
+                    }
+
                     let mut uu :Vec<(String, bool)> = Vec::new();
                     for (key, value) in use_flag.as_object().unwrap().iter()
                     {
@@ -256,13 +262,21 @@ fn main()
 
                     let id = build_id(&repository, &category, &package, &version, &uu);
 
+                    println!("GET {}/{}/{}/{}", repository, category, package, version);
+                    println!("USE=\"{}\"", uses);
+                    println!("id:{}", id);
+
                     if is_build_request(&repository, &category, &package, &version, &id).is_some()
                     {
+                        println!("Available!");
+                        println!("");
                         let url = format!("{}/{}/{}/{}/builds/{}", repository, category, package, version, id);
                         return client.text(url);
                     }
                     else
                     {
+                        println!("N/A");
+                        println!("");
                         client.set_status(StatusCode::NotFound);
                         return client.empty();
                     }
@@ -289,8 +303,10 @@ fn main()
                         uu.push((key.clone(), value.as_bool().unwrap()));
                     }
                     let id = build_id(&repository, &category, &package, &version, &uu);
-                    println!("{}/{}/{}/{}", repository, category, package, version);
+                    println!("POST {}/{}/{}/{}", repository, category, package, version);
                     println!("USE=\"{}\"", uses);
+                    println!("id:{}", id);
+                    println!("");
 
                     let url = format!("{}/{}/{}/{}/builds/{}", repository, category, package, version, id);
 
