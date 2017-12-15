@@ -8,6 +8,7 @@ use=${5}
 
 atom=${category}/${package}-${version}::${repository}
 
+GENTOO_BUILD_SERVER="$(ip route | awk 'NR==1 {print $3}'):4000"
 
 function ebuild_to_path()
 {
