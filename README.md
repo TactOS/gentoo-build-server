@@ -26,9 +26,10 @@ $ cd gentoo-build-server
 
 ## Required tools and libs
 ### Server
-- \>=cargo-0.17.0
-- \>=rust-1.16.0
-- \>=docker-17.05
+- \>=cargo-0.23.0
+- \>=rust-1.22.1
+- \>=docker-17.11
+- \>=mongodb-3.4.10
 
 ### Client
 - curl
@@ -37,7 +38,6 @@ $ cd gentoo-build-server
 
 ## TODO
 - Use kubernetes.
-- Use DB.
 - Support systemd and other.
 - Support multiple compiler.
 - Support multiple CFLAGS and CXXFLAGS.
@@ -49,5 +49,4 @@ $ cd gentoo-build-server
 - Specify version of dependency package.
 - Support file search.
 - Improve cache.
-- Web client.
 - View build log in real time.
