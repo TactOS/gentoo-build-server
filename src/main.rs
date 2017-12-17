@@ -3,6 +3,8 @@ extern crate hyper;
 extern crate iron;
 extern crate valico;
 extern crate crypto;
+#[macro_use]
+extern crate serde_json;
 
 #[macro_use(bson, doc)]
 extern crate bson;
@@ -10,6 +12,7 @@ extern crate mongodb;
 
 use mongodb::{Client, ThreadedClient};
 use mongodb::db::ThreadedDatabase;
+use mongodb::coll::options::FindOptions;
 use bson::
 {
     Bson,
@@ -37,7 +40,7 @@ use rustless::
     Application,
     Api,
     Nesting,
-    Versioning
+    Versioning,
 };
 use hyper::header::
 {
@@ -46,6 +49,8 @@ use hyper::header::
     DispositionParam,
     Charset
 };
+
+use serde_json::value::Value;
 
 const GBS_DIR:&str = "/var/lib/gbs";
 
@@ -126,11 +131,49 @@ fn main()
     let client = Client::connect("localhost", 27017)
         .expect("Failed to initialize standalone client.");
     let coll = client.db("gbs").collection("builds");
+    let colll = client.db("gbs").collection("builds");
 
     let api = Api::build(|api|
     {
         api.prefix("api");
         api.version("1", Versioning::Path);
+        api.namespace("atoms", |atoms_ns|
+        {
+            atoms_ns.get("", |endpoint|
+            {
+                endpoint.handle(move |client, params|
+                {
+                    let mut op = FindOptions::new();
+                    op.limit = Some(50);
+                    op.sort = Some(doc!{"date": -1});
+                    let a = colll.find(None, Some(op)).unwrap();
+                    let mut c: Vec<Value> = a.map(|x| Bson::Document(x.unwrap()).clone().into()).collect();
+                    for e in c.iter_mut()
+                    {
+                        let repository = e["repository"].as_str().unwrap().to_string();
+                        let category = e["category"].as_str().unwrap().to_string();
+                        let package = e["package"].as_str().unwrap().to_string();
+                        let version = e["version"].as_str().unwrap().to_string();
+                        let id = e["id"].as_str().unwrap().to_string();
+                        if is_build_request(&repository, &category, &package, &version, &id).is_some()
+                        {
+                            let s = format!("{}/packages/{}/{}/{}/{}/{}/status", GBS_DIR, repository, category, package, version, id);
+                            let path = Path::new(&s);
+                            if path.is_file()
+                            {
+                                let f = File::open(&s).unwrap();
+                                let mut reader = BufReader::new(f);
+                                let mut buf = String::new();
+                                let _ = reader.read_to_string(&mut buf);
+                                e["status"] = json!(buf.replace("\n", "").replace("\r", ""));
+                            }
+                        }
+                    }
+
+                    return client.text(Value::Array(c).to_string());
+                })
+            });
+        });
 
         api.namespace("atoms/:repositories/:categories/:packages/:versions", |atoms_ns|
         {
