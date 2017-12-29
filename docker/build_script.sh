@@ -84,8 +84,11 @@ for ebuild in ${ebuilds[*]}; do
     install -o root -g portage -m 2775 -d /mnt/ccache/$(ebuild_to_path ${ebuild})/ccache
   fi
   ln -s /mnt/ccache/$(ebuild_to_path ${ebuild})/ccache /var/tmp/ccache
+
+  mkdir -p /mnt/log/$(ebuild_to_path ${ebuild})
+  : > /mnt/log/$(ebuild_to_path ${ebuild})/log
   echo "\$ ebuild ${ebuild} merge" | tee -a /mnt/package/log
-  env MAKEOPTS=${MAKEOPTS} ebuild ${ebuild} merge | tee -a /mnt/package/log
+  env MAKEOPTS=${MAKEOPTS} ebuild ${ebuild} merge | tee -a /mnt/package/log /mnt/log/$(ebuild_to_path ${ebuild})/log
   echo "\$ quickpkg \=$(ebuild_to_atom ${ebuild})" | tee -a /mnt/package/log
   quickpkg \=$(ebuild_to_atom ${ebuild}) | tee -a /mnt/package/log
 done

@@ -4,6 +4,7 @@ mkdir -p ${GBS_DIR}/ccache
 mkdir -p ${GBS_DIR}/distfiles
 mkdir -p ${GBS_DIR}/packages
 mkdir -p ${GBS_DIR}/repos
+mkdir -p ${GBS_DIR}/logs
 
 docker pull gentoo/stage3-amd64:latest
 docker build docker -t gentoo:gbs
