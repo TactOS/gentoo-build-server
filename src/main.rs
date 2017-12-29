@@ -207,7 +207,7 @@ fn main()
                             let f = File::open(&s).unwrap();
                             let mut reader = BufReader::new(f);
                             let mut buf = String::new();
-                            reader.read_to_string(&mut buf);
+                            let _ = reader.read_to_string(&mut buf);
                             return client.text(buf);
                         }
                     }
@@ -238,7 +238,7 @@ fn main()
                             let f = File::open(&s).unwrap();
                             let mut reader = BufReader::new(f);
                             let mut buf = String::new();
-                            reader.read_to_string(&mut buf);
+                            let _ = reader.read_to_string(&mut buf);
                             return client.text(buf);
                         }
                     }
