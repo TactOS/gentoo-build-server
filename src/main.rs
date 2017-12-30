@@ -25,6 +25,7 @@ use std::io::BufReader;
 use std::io::Read;
 use std::path::Path;
 use std::process::Command;
+use std::sync::Arc;
 use std::thread;
 use std::time::
 {
@@ -130,8 +131,7 @@ fn main()
 {
     let client = Client::connect("localhost", 27017)
         .expect("Failed to initialize standalone client.");
-    let coll = client.db("gbs").collection("builds");
-    let colll = client.db("gbs").collection("builds");
+    let coll = Arc::new(client.db("gbs").collection("builds"));
 
     let api = Api::build(|api|
     {
@@ -141,34 +141,14 @@ fn main()
         {
             atoms_ns.get("", |endpoint|
             {
+                let coll = coll.clone();
                 endpoint.handle(move |client, params|
                 {
                     let mut op = FindOptions::new();
                     op.limit = Some(50);
                     op.sort = Some(doc!{"date": -1});
-                    let a = colll.find(None, Some(op)).unwrap();
-                    let mut c: Vec<Value> = a.map(|x| Bson::Document(x.unwrap()).clone().into()).collect();
-                    for e in c.iter_mut()
-                    {
-                        let repository = e["repository"].as_str().unwrap().to_string();
-                        let category = e["category"].as_str().unwrap().to_string();
-                        let package = e["package"].as_str().unwrap().to_string();
-                        let version = e["version"].as_str().unwrap().to_string();
-                        let id = e["id"].as_str().unwrap().to_string();
-                        if is_build_request(&repository, &category, &package, &version, &id).is_some()
-                        {
-                            let s = format!("{}/packages/{}/{}/{}/{}/{}/status", GBS_DIR, repository, category, package, version, id);
-                            let path = Path::new(&s);
-                            if path.is_file()
-                            {
-                                let f = File::open(&s).unwrap();
-                                let mut reader = BufReader::new(f);
-                                let mut buf = String::new();
-                                let _ = reader.read_to_string(&mut buf);
-                                e["status"] = json!(buf.replace("\n", "").replace("\r", ""));
-                            }
-                        }
-                    }
+                    let a = coll.find(None, Some(op)).unwrap();
+                    let c: Vec<Value> = a.map(|x| Bson::Document(x.unwrap()).clone().into()).collect();
 
                     return client.text(Value::Array(c).to_string());
                 })
@@ -190,7 +170,8 @@ fn main()
                 {
                     params.req_typed("id", json_dsl::string());
                 });
-                endpoint.handle(|mut client, params|
+                let coll = coll.clone();
+                endpoint.handle(move |mut client, params|
                 {
                     let repository = params.find("repositories").unwrap().to_string().trim_matches('"').to_string();
                     let category = params.find("categories").unwrap().to_string().trim_matches('"').to_string();
@@ -198,21 +179,10 @@ fn main()
                     let version = params.find("versions").unwrap().to_string().trim_matches('"').to_string();
                     let id = params.find("id").unwrap().to_string().trim_matches('"').to_string();
 
-                    if is_build_request(&repository, &category, &package, &version, &id).is_some()
-                    {
-                        let s = format!("{}/packages/{}/{}/{}/{}/{}/status", GBS_DIR, repository, category, package, version, id);
-                        let path = Path::new(&s);
-                        if path.is_file()
-                        {
-                            let f = File::open(&s).unwrap();
-                            let mut reader = BufReader::new(f);
-                            let mut buf = String::new();
-                            let _ = reader.read_to_string(&mut buf);
-                            return client.text(buf);
-                        }
-                    }
-                    client.set_status(StatusCode::NotFound);
-                    return client.empty();
+                    let mut op = FindOptions::new();
+                    op.projection = Some(doc!{"status" => 1, "_id" => 0});
+                    let c = coll.find_one(Some(doc!{"repository" => &repository, "category" => &category, "package" => &package, "version" => &version, "id" => &id}), Some(op)).unwrap().unwrap();
+                    return client.text(c.to_string());
                 })
             });
             atoms_ns.get("builds/:id/log", |endpoint|
@@ -327,6 +297,7 @@ fn main()
             });
             atoms_ns.post("builds", |endpoint|
             {
+                let coll = coll.clone();
                 endpoint.handle(move |mut client, params|
                 {
                     let repository = params.find("repositories").unwrap().to_string().trim_matches('"').to_string();
@@ -366,13 +337,14 @@ fn main()
                                 let s = SystemTime::now();
                                 let doc = doc!
                                 {
-                                    "date" => &format!("{}", s.duration_since(UNIX_EPOCH).unwrap().as_secs()),
+                                    "date" => s.duration_since(UNIX_EPOCH).unwrap().as_secs(),
                                     "id" => id.clone(),
                                     "repository" => repository.clone(),
                                     "category" => category.clone(),
                                     "package" => package.clone(),
                                     "version" => version.clone(),
-                                    "use" => uses
+                                    "use" => uses,
+                                    "status" => "accept"
                                 };
                                 coll.insert_one(doc.clone(), None).ok().expect("Failed to insert document.");
                             }
@@ -402,6 +374,7 @@ fn main()
                                 .arg(category)
                                 .arg(package)
                                 .arg(version)
+                                .arg(id)
                                 .arg(uses)
                                 .output().unwrap();
                                 println!("{}\n", String::from_utf8_lossy(&b.stdout));

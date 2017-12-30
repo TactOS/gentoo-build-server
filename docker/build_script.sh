@@ -4,11 +4,13 @@ repository=${1}
 category=${2}
 package=${3}
 version=${4}
-use=${5}
+id=${5}
+use=${6}
 
 atom=${category}/${package}-${version}::${repository}
 
 GENTOO_BUILD_SERVER="$(ip route | awk 'NR==1 {print $3}'):4000"
+DB_SERVER="$(ip route | awk 'NR==1 {print $3}')"
 
 function ebuild_to_path()
 {
@@ -38,7 +40,7 @@ function try_download()
   local package=$(qatom --format '%{PN}' ${atom})
   local version=$(qatom -F '%{PV}-%[PR]' ${atom} | sed -e 's/-$//')
   case $(curl -s ${GENTOO_BUILD_SERVER}/api/1/atoms/${download}/status) in
-    'success')
+    '{ status: "success" }')
       mkdir -p /usr/portage/packages/${category}
       if curl -f -s -o /usr/portage/packages/${category}/${package}-${version}.tbz2 ${GENTOO_BUILD_SERVER}/api/1/atoms/${download}; then
         return 0
@@ -53,7 +55,8 @@ function try_download()
 
 : > /mnt/package/log
 
-echo compiling > /mnt/package/status
+mongo --host ${DB_SERVER} gbs --quiet --eval "db.builds.update({repository:'${repository}',category:'${category}',package:'${package}',version:'${version}',id:'${id}'}, {\$set:{start:NumberLong($(date +%s))}})"
+mongo --host ${DB_SERVER} gbs --quiet --eval "db.builds.update({repository:'${repository}',category:'${category}',package:'${package}',version:'${version}',id:'${id}'}, {\$set:{status:'compiling'}})"
 echo FEATURES=\'ccache\' >> /etc/portage/make.conf
 echo CCACHE_SIZE=\'16G\' >> /etc/portage/make.conf
 
@@ -94,7 +97,8 @@ for ebuild in ${ebuilds[*]}; do
 done
 
 if install -m 644 /usr/portage/packages/${category}/${package}-${version}.tbz2 /mnt/package; then
-  echo success > /mnt/package/status
+  mongo --host ${DB_SERVER} gbs --quiet --eval "db.builds.update({repository:'${repository}',category:'${category}',package:'${package}',version:'${version}',id:'${id}'}, {\$set:{status:'success'}})"
 else
-  echo failed > /mnt/package/status
+  mongo --host ${DB_SERVER} gbs --quiet --eval "db.builds.update({repository:'${repository}',category:'${category}',package:'${package}',version:'${version}',id:'${id}'}, {\$set:{status:'failed'}})"
 fi
+mongo --host ${DB_SERVER} gbs --quiet --eval "db.builds.update({repository:'${repository}',category:'${category}',package:'${package}',version:'${version}',id:'${id}'}, {\$set:{end:NumberLong($(date +%s))}})"
