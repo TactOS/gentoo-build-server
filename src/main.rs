@@ -70,7 +70,6 @@ fn check(path:&str) -> Option<&str>
 
 fn is_atom(repository:&str, category:&str, package:&str, version:&str) -> Option<()>
 {
-
     let r = check(repository)?;
     let c = check(category)?;
     let p = check(package)?;
@@ -88,7 +87,6 @@ fn is_atom(repository:&str, category:&str, package:&str, version:&str) -> Option
 
 fn is_build_request(repository:&str, category:&str, package:&str, version:&str, id:&str) -> Option<()>
 {
-
     let r = check(repository)?;
     let c = check(category)?;
     let p = check(package)?;
